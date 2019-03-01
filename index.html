@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>JW proc music: Piano Roll</title>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <!-- <link rel="icon" type="image/png" sizes="174x174" href="./style/favicon.png"> -->
+        
+        <script src="Tone.min.js"></script>
+        <script src="phaser.min.js"></script>
+
+        <!-- <link rel="stylesheet" type="text/css" href="./style/examples.css"> -->
+
+        <script>
+
+            var synth = new Tone.PolySynth(12, Tone.Synth).toMaster();
+
+            var displaySettings = {
+                // keyWhiteWidth: 70,
+                // keyWhiteHeight: 22,
+                // keyBlackWidth: 43,
+                // keyBlackHeight: 14,
+                noteWidth: 35,
+                noteHeight: 20,
+                noteSpacing: 4,
+            }
+
+            var trackSettings = {
+                beats: 64,
+                pitches: 4 * 12,
+                lowestPitch: 'C2',
+                loop: true
+            }
+
+            var config = {
+                type: Phaser.AUTO,
+                //width: displaySettings.noteWidth * (trackSettings.beats + 1),
+                //height: displaySettings.noteHeight * trackSettings.pitches,
+                width: 1024,
+                height: 768,
+                // physics: {
+                //     default: 'arcade',
+                //     arcade: {
+                //         gravity: { y: 200 }
+                //     }
+                // },
+                backgroundColor: 0xffeeeeee,
+                scene: {
+                    preload: preload,
+                    create: create,
+                    update: update
+                }
+            };
+
+            var game = new Phaser.Game(config);
+
+            function getNoteX (time) {
+                return (time + 2) * displaySettings.noteWidth;
+            }
+
+            function getNoteY (pitch) {
+                return (trackSettings.pitches - 1 - pitch) * displaySettings.noteHeight;
+            }
+
+            function getTimeFromX (x) {
+                return Math.floor(x / displaySettings.noteWidth) - 2;
+            }
+
+            function getPitchFromY (y) {
+                return trackSettings.pitches - 1 - Math.floor(y / displaySettings.noteHeight);
+            }
+
+            var noteSprites = [];
+
+            function placeNote (scene, note) {
+                if (note.pitch < 0 || note.pitch > trackSettings.pitches - 1 || note.start < 0 || note.start > trackSettings.beats) {
+                    console.log ("Tried to place note out of bounds", note);
+                    return;
+                }
+                
+                //notes.push([Tone.Frequency("C3").transpose(0), 0]);
+
+                /*
+                var chord = new Tone.Event(function(time, chord){
+                    synth.triggerAttackRelease(chord, "16n");
+                }, Tone.Frequency("C3").transpose(note.pitch));
+                console.log ("chord start: ", chord.start(note.start * Tone.Time("16n").toSeconds()));
+                */
+                var noteId = Tone.Transport.schedule(function(time){
+                    //invoked when the Transport starts 
+                    synth.triggerAttackRelease(Tone.Frequency("C2").transpose(note.pitch),
+                    Tone.Time("16n").toSeconds() * note.length);
+                }, note.start * Tone.Time("16n").toSeconds() );
+                note.id = noteId;
+
+                //console.log("scene:", scene);
+
+                var noteSprite = scene.add.rectangle(
+                    getNoteX(note.start),
+                    getNoteY(note.pitch),
+                    displaySettings.noteWidth * note.length,
+                    displaySettings.noteHeight,
+                    0xff559955)
+                .setDisplayOrigin(0,0)
+                .setInteractive();
+                noteSprite.on ('pointerup', function (pointer) {
+                    if (pointer.rightButtonDown() && !pointer.leftButtonDown()) {
+                        this.destroy();
+                        Tone.Transport.clear(note.id);
+                        console.log ("Destroyed note");
+                    }
+                }, noteSprite);
+                noteSprites.push(noteSprite);
+
+                console.log ("Placed note", note);
+            }
+
+            function onGridLeftClick (scene, x, y) {
+                var note = {
+                    start: getTimeFromX(x),
+                    length: 1,
+                    pitch: getPitchFromY(y)
+                };
+                //console.log("clicked time " + note.start + ", pitch " + note.pitch);
+                placeNote(scene, note);
+            }
+
+            function togglePlay () {
+                
+                console.log('Toggle Play');
+
+                Tone.Transport.toggle();
+
+                // play a middle 'C' for the duration of an 8th note
+                //synth.triggerAttackRelease("C4", "16n");
+
+            }
+
+            function onGenerate () {
+                generate(game);
+            }
+
+            function generate (scene) {
+                clearAllNotes();
+
+                //var generatedNotes = [{start: 0, length: 16, pitch: 12}];
+                var generatedNotes = [];
+                generatedNotes.push({start: 0, length: 16, pitch: Phaser.Math.RND.pick([12, 24, 16])});
+
+                addNotes(scene, generatedNotes);
+            }
+
+            function clearAllNotes () {
+                Tone.Transport.cancel(0);
+                while(noteSprites.length > 0) {
+                    var noteSprite = noteSprites.pop();
+                    noteSprite.destroy();
+                }
+            }
+
+            function addNotes (scene, notes) {
+                for (var i = notes.length - 1; i >= 0; i--) {
+                    placeNote(scene, notes[i]);
+                }
+            }
+
+
+            //var notes = [];
+            var defaultNotes = [
+                {start: 0, length: 16, pitch: 12},
+                {start: 2, length: 2, pitch: 14},
+                {start: 4, length: 2, pitch: 16},
+                {start: 6, length: 2, pitch: 19},
+                {start: 8, length: 2, pitch: 24},
+                {start: 10, length: 2, pitch: 26},
+                {start: 12, length: 2, pitch: 28},
+                {start: 14, length: 2, pitch: 31},
+                {start: 16, length: 2, pitch: 36},
+                {start: 18, length: 2, pitch: 31},
+                {start: 20, length: 2, pitch: 28},
+                {start: 22, length: 2, pitch: 26},
+                {start: 24, length: 2, pitch: 24},
+                {start: 26, length: 2, pitch: 19},
+                {start: 28, length: 2, pitch: 16},
+                {start: 30, length: 2, pitch: 14},
+                
+                {start: 32, length: 16, pitch: 9},
+                {start: 34, length: 2, pitch: 11},
+                {start: 36, length: 2, pitch: 12},
+                {start: 38, length: 2, pitch: 16},
+                {start: 40, length: 2, pitch: 21},
+                {start: 42, length: 2, pitch: 23},
+                {start: 44, length: 2, pitch: 24},
+                {start: 46, length: 2, pitch: 28},
+                {start: 48, length: 2, pitch: 33},
+                {start: 50, length: 2, pitch: 28},
+                {start: 52, length: 2, pitch: 24},
+                {start: 54, length: 2, pitch: 23},
+                {start: 56, length: 2, pitch: 21},
+                {start: 58, length: 2, pitch: 16},
+                {start: 60, length: 2, pitch: 12},
+                {start: 62, length: 2, pitch: 11},
+            ];
+
+            function preload ()
+            {
+                //this.load.image('keys', 'keys.png');
+                this.load.image('keys-even', 'keys-even2.png');
+                //this.load.image('key-white', 'key-white.png');
+                //this.load.image('key-black', 'key-black.png');
+
+                //this.load.setBaseURL('http://labs.phaser.io');
+
+                //this.load.image('sky', 'assets/skies/space3.png');
+                // this.load.image('logo', 'assets/sprites/phaser3-logo.png');
+                // this.load.image('red', 'assets/particles/red.png');
+            }
+
+            function create ()
+            {
+                this.input.mouse.disableContextMenu();
+
+                this.input.keyboard.on('keydown_SPACE', function (event) { togglePlay(); });
+
+                /* Tone js init stuff */
+                //Tone.Transport.loop = false;
+                Tone.Transport.loopStart = 0;
+                Tone.Transport.loopEnd = trackSettings.beats * Tone.Time("16n").toSeconds();
+                Tone.Transport.loop = trackSettings.loop;
+
+                //this.add.image(400, 300, 'sky');
+
+                // var particles = this.add.particles('red');
+
+                // var emitter = particles.createEmitter({
+                //     speed: 100,
+                //     scale: { start: 1, end: 0 },
+                //     blendMode: 'ADD'
+                // });
+
+                // var logo = this.physics.add.image(400, 100, 'logo');
+
+                // logo.setVelocity(100, 200);
+                // logo.setBounce(1, 1);
+                // logo.setCollideWorldBounds(true);
+
+                // emitter.startFollow(logo);
+
+                //this.add.rectangle(400+35, 300, 800-69, 600, 0xffdddddd);
+                // this.add.rectangle(80+35, 304, 100, 20, 0xff555555);
+                // this.add.image(35, 74, 'keys');
+                // this.add.image(35, 74+147*1, 'keys');
+                // this.add.image(35, 74+147*2, 'keys');
+                // this.add.image(35, 74+147*3, 'keys');
+                
+                //this.add.image(0, 0, 'key-white').setDisplayOrigin(0,0);
+
+
+                // for (var i = 0; i < 24; i++)
+                // {
+                //     this.add.image(0, i * displaySettings.keyWhiteHeight, 'key-white').setDisplayOrigin(0,0);
+                // }
+                // this.add.image(0, 15, 'key-black').setDisplayOrigin(0,0);
+                // this.add.image(0, 15 + displaySettings.keyWhiteHeight, 'key-black').setDisplayOrigin(0,0);
+                // this.add.image(0, 15 + displaySettings.keyWhiteHeight * 2, 'key-black').setDisplayOrigin(0,0);
+                // this.add.image(0, 15 + displaySettings.keyWhiteHeight * 4, 'key-black').setDisplayOrigin(0,0);
+                // this.add.image(0, 15 + displaySettings.keyWhiteHeight * 5, 'key-black').setDisplayOrigin(0,0);
+
+                // this.add.rectangle(displaySettings.keyWhiteWidth + displaySettings.noteSpacing, (displaySettings.keyWhiteHeight - displaySettings.noteHeight) / 2, displaySettings.noteWidth, displaySettings.noteHeight, 0xff559955).setDisplayOrigin(0,0);
+
+                this.add.rectangle(
+                    getNoteX(0),
+                    getNoteY(trackSettings.pitches - 1),
+                    displaySettings.noteWidth * 1,
+                    displaySettings.noteHeight * (trackSettings.pitches),
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+                this.add.rectangle(
+                    getNoteX(16),
+                    getNoteY(trackSettings.pitches - 1),
+                    displaySettings.noteWidth * 1,
+                    displaySettings.noteHeight * (trackSettings.pitches),
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+                this.add.rectangle(
+                    getNoteX(32),
+                    getNoteY(trackSettings.pitches - 1),
+                    displaySettings.noteWidth * 1,
+                    displaySettings.noteHeight * (trackSettings.pitches),
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+                this.add.rectangle(
+                    getNoteX(48),
+                    getNoteY(trackSettings.pitches - 1),
+                    displaySettings.noteWidth * 1,
+                    displaySettings.noteHeight * (trackSettings.pitches),
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+
+                this.add.rectangle(
+                    getNoteX(0),
+                    getNoteY(0),
+                    displaySettings.noteWidth * trackSettings.beats,
+                    displaySettings.noteHeight,
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+                this.add.rectangle(
+                    getNoteX(0),
+                    getNoteY(12),
+                    displaySettings.noteWidth * trackSettings.beats,
+                    displaySettings.noteHeight,
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+                this.add.rectangle(
+                    getNoteX(0),
+                    getNoteY(24),
+                    displaySettings.noteWidth * trackSettings.beats,
+                    displaySettings.noteHeight,
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+                this.add.rectangle(
+                    getNoteX(0),
+                    getNoteY(36),
+                    displaySettings.noteWidth * trackSettings.beats,
+                    displaySettings.noteHeight,
+                    0xffdddddd)
+                .setDisplayOrigin(0,0);
+
+                var grid = this.add.grid(0, 0,
+                    displaySettings.noteWidth * (trackSettings.beats + 2),
+                    displaySettings.noteHeight * trackSettings.pitches,
+                    displaySettings.noteWidth,
+                    displaySettings.noteHeight,
+                    0xff0000, 0, 0xaaaaaa, 1)
+                    .setDisplayOrigin(0,0).setInteractive();
+                grid.on('pointerup', function (pointer) {
+                    if (pointer.leftButtonDown() && !pointer.rightButtonDown()) {
+                        onGridLeftClick(this, pointer.worldX, pointer.worldY);
+                    }
+                }, this);
+
+                this.add.image(0, 0, 'keys-even')
+                    .setDisplayOrigin(0,0)
+                    .setScrollFactor(0, 1)
+                    .setInteractive()
+                    .setDepth(999);
+                this.add.image(0, 240, 'keys-even')
+                    .setDisplayOrigin(0,0)
+                    .setScrollFactor(0, 1)
+                    .setInteractive()
+                    .setDepth(999);
+                this.add.image(0, 480, 'keys-even')
+                    .setDisplayOrigin(0,0)
+                    .setScrollFactor(0, 1)
+                    .setInteractive()
+                    .setDepth(999);
+                this.add.image(0, 720, 'keys-even')
+                    .setDisplayOrigin(0,0)
+                    .setScrollFactor(0, 1)
+                    .setInteractive()
+                    .setDepth(999);
+
+                /*
+                this.add.rectangle(getNoteX(0), getNoteY(0), displaySettings.noteWidth, displaySettings.noteHeight, 0xff559955).setDisplayOrigin(0,0);
+
+                this.add.rectangle(getNoteX(1), getNoteY(35), displaySettings.noteWidth, displaySettings.noteHeight, 0xff559955).setDisplayOrigin(0,0);
+                */
+
+                addNotes(this, defaultNotes);
+                
+
+                var cursors = this.input.keyboard.createCursorKeys();
+
+                var controlConfig = {
+                    camera: this.cameras.main,
+                    left: cursors.left,
+                    right: cursors.right,
+                    up: cursors.up,
+                    down: cursors.down,
+                    zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
+                    zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+                    acceleration: 0.25,
+                    drag: 0.005,
+                    maxSpeed: 1.0
+                };
+
+                controls = new Phaser.Cameras.Controls.SmoothedKeyControl(controlConfig);
+                this.cameras.main.setBounds(0, 0,
+                    displaySettings.noteWidth * (trackSettings.beats + 2),
+                    displaySettings.noteHeight * trackSettings.pitches);
+
+                generate(this);
+            }
+
+            function update (time, delta)
+            {
+                controls.update(delta);
+            }
+        </script>
+
+    </head>
+
+    <body>
+        <!-- <img src="Twinkle.png" id="scoreImg"> -->
+        <!-- <img src="blah.png" id="scoreImg"> -->
+        <!-- <img src="1 Music 0.png" id="scoreImg"> -->
+        <!-- <img src="1 Music 1.png" id="scoreImg"> -->
+        <!-- <img src="1 Twinkle 0.png" id="scoreImg"> -->
+        <!-- <img src="1 Twinkle 1.png" id="scoreImg"> -->
+
+        <!-- <input type="button" name="playButton" value="Play" onclick="onPlay()"> -->
+
+        <p>
+            <b>Scroll:</b> Arrow Keys,
+            <b>Add Note:</b> Left-Click,
+            <b>Remove Note:</b> Right-Click,
+            <b>Play/Stop:</b> Space
+        </p>
+
+        <input type="button" name="generateButton" value="Generate" onclick="onGenerate()">
+
+    </body>
+
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>PLAYER</title>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <!-- <link rel="icon" type="image/png" sizes="174x174" href="./style/favicon.png"> -->
+        
+        <script src="Tone.min.js"></script>
+
+        <!-- <link rel="stylesheet" type="text/css" href="./style/examples.css"> -->
+
+        <script>
+            // jshint ignore: start
+
+
+            //create a synth and connect it to the master output (your speakers)
+            var synth = new Tone.PolySynth(12, Tone.Synth).toMaster();
+            
+            window.onload = function () {
+
+                var img = document.getElementById("scoreImg");
+                //console.log(img);
+                var canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+
+                var notes = [];
+                for (var col = 0; col < img.width; col++) {
+                    for (var row = img.height - 1; row >= 0; row--) {
+                        var pixelData = canvas.getContext('2d').getImageData(col,row,1,1).data;
+                        //console.log(pixelData);
+                        if (pixelData[0] == 255 &&
+                            pixelData[1] == 255 &&
+                            pixelData[2] == 255 &&
+                            pixelData[3] == 255) {
+                            //console.log("white");
+                        } else {
+                            //console.log("not white");
+                            // this is a note, create it
+                            notes.push([Tone.Frequency("C4").transpose(img.height - row), col]);
+                            /*
+                            console.log("before:", col, row, note);
+                            Tone.Transport.schedule(function(time){
+                                //time = sample accurate time of the event
+                                synth.triggerAttackRelease(note, "8n");
+                                console.log("after:", time, note);
+                            }, col);
+                            */
+                            //console.log(col, row);
+                        }
+                    }
+                }
+
+                for (var i = notes.length - 1; i >= 0; i--) {
+                    var chord = new Tone.Event(function(time, chord){
+                        synth.triggerAttackRelease(chord, "8n");
+                    }, notes[i][0]);
+                    chord.start(notes[i][1]  * Tone.Time("8n").toSeconds());
+                    /*
+                    var note = eval(notes[i][0]);
+                    Tone.Transport.schedule(function(time){
+                        synth.triggerAttackRelease(note, "8n");
+                    }, eval(notes[i][1]));
+                    */
+                }
+                
+                /*
+                var sequence = new Tone.Sequence(function(time, note){
+                    //console.log(note);
+                    synth.triggerAttackRelease(note, "16n", time);
+                    //straight quater notes
+                // }, ["C4", "E4", "G4", "A4"], "8n").start(0);
+                //}, Tone.Frequency("C4").harmonize([0,1,2,3,4,5,6,7,8,9,10,11]), "8n").start();
+                }, notes, "8n").start();
+                */
+                
+
+                Tone.Transport.loop = false;
+
+                onPlay = function () {
+
+                    //play a middle 'C' for the duration of an 8th note
+                    //synth.triggerAttackRelease("C4", "8n");
+
+                    Tone.Transport.toggle();
+
+                }
+            }
+
+        </script>
+
+    </head>
+
+    <body>
+        <!-- <img src="Twinkle.png" id="scoreImg"> -->
+        <!-- <img src="blah.png" id="scoreImg"> -->
+        <!-- <img src="1 Music 0.png" id="scoreImg"> -->
+        <!-- <img src="1 Music 1.png" id="scoreImg"> -->
+        <!-- <img src="1 Twinkle 0.png" id="scoreImg"> -->
+        <img src="1 Twinkle 1.png" id="scoreImg">
+
+        <input type="button" name="playButton" value="Play" onclick="onPlay()">
+    </body>
+
+</html>
